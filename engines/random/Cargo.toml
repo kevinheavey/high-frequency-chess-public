@@ -1,0 +1,12 @@
+[package]
+name = "random-engine"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "random_engine"
+crate-type = ["cdylib"]
+
+[dependencies]
+hfc-rules = { path = "../../rules" }
+hfc-abi = { path = "../../abi" }

@@ -1,0 +1,808 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "High-Frequency Chess",
+    "version": "1",
+    "description": "Reads are open. Writes need `Authorization: Bearer <api-token>`; the\ndashboard shows your token while you are signed in. Sign-in is a browser\nflow at `/login`, with GitHub. Times are unix\nseconds. Errors are `{\"error\":\"why\"}` with status 400, or 401 when the\ntoken is missing or bad.\n"
+  },
+  "paths": {
+    "/api/state": {
+      "get": {
+        "summary": "Everything the dashboard shows",
+        "responses": {
+          "200": {
+            "description": "Current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/State"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/game": {
+      "get": {
+        "summary": "One game, replayable",
+        "parameters": [
+          {
+            "name": "file",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "A history row's `file` plus `\".moves\"`"
+          },
+          {
+            "name": "n",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "Game index within the file, from 0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The game",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Game"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/submit": {
+      "post": {
+        "summary": "Submit an entry",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-][A-Za-z0-9._-]*$"
+            },
+            "description": "Your entry's ladder name. Yours once accepted."
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "tarball"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/gzip": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          },
+          "description": "The entry source as .tar.gz: `git archive HEAD:entries/example --format=tar.gz`"
+        },
+        "responses": {
+          "200": {
+            "description": "Queued; poll /api/job, or watch your entries in /api/state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job": {
+                      "type": "integer"
+                    },
+                    "queued": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/job": {
+      "get": {
+        "summary": "One submitted build",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "From /api/submit's answer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/token": {
+      "post": {
+        "summary": "Rotate your API token",
+        "description": "The old token stops working immediately.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The fresh token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/logout": {
+      "post": {
+        "summary": "End the browser session",
+        "responses": {
+          "302": {
+            "description": "Session cookie cleared, redirect to /"
+          }
+        }
+      }
+    },
+    "/results/{file}": {
+      "get": {
+        "summary": "Raw match records",
+        "parameters": [
+          {
+            "name": "file",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "A `.txt`, `.pgn` or `.moves` filename that `history` names"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The file",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/engine": {
+      "get": {
+        "summary": "One engine's aggregate record",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngineStats"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/play": {
+      "get": {
+        "summary": "One casual move against an engine",
+        "description": "Replays `moves` from the start position and answers with the engine's reply. Rate-limited per address; positions are only reachable by playing to them. Never rated.",
+        "parameters": [
+          {
+            "name": "engine",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "moves",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated UCI moves from the start position"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The reply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayReply"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "token": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Your API token. A signed-in browser session works too."
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Refused",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                },
+                "retry_in": {
+                  "type": "integer",
+                  "description": "Seconds until the refused action is allowed; present on cooldown refusals"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "State": {
+        "type": "object",
+        "properties": {
+          "book": {
+            "$ref": "#/components/schemas/Book"
+          },
+          "leaderboard": {
+            "$ref": "#/components/schemas/Leaderboard"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchRow"
+            }
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Submission"
+            },
+            "description": "Your entries and in-flight submissions, newest first; empty signed out"
+          },
+          "user": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "github_login": {
+            "type": "boolean",
+            "description": "Whether GitHub sign-in is configured"
+          }
+        }
+      },
+      "Book": {
+        "type": "object",
+        "properties": {
+          "checksum": {
+            "type": "string"
+          },
+          "openings": {
+            "type": "integer"
+          }
+        }
+      },
+      "Leaderboard": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Standing"
+            }
+          },
+          "excluded": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Result sets left out of the fit, with the reason"
+          },
+          "pairings": {
+            "type": "integer"
+          },
+          "anchor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The entry rated 0"
+          }
+        }
+      },
+      "Standing": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "elo": {
+            "type": "number"
+          },
+          "err": {
+            "type": "number",
+            "description": "Half-width of the 95% interval; negative when it cannot be estimated"
+          },
+          "games": {
+            "type": "integer"
+          },
+          "opponents": {
+            "type": "integer"
+          },
+          "group": {
+            "type": "integer",
+            "description": "0 is the main group; other groups are not comparable with it"
+          },
+          "owner": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The submitter: a GitHub login, a ~guest, or null for house engines"
+          },
+          "submitted": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "When the standing build was accepted; resubmission resets it"
+          }
+        }
+      },
+      "MatchRow": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "a": {
+            "type": "string"
+          },
+          "b": {
+            "type": "string"
+          },
+          "games": {
+            "type": "integer"
+          },
+          "cycles_a": {
+            "type": "integer"
+          },
+          "cycles_b": {
+            "type": "integer"
+          },
+          "score": {
+            "type": "number",
+            "description": "Points percentage for `a`"
+          },
+          "elo": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Null when every game went one way"
+          },
+          "err": {
+            "type": "number",
+            "description": "Negative when it cannot be estimated"
+          },
+          "book": {
+            "type": "string"
+          },
+          "when": {
+            "type": "integer"
+          },
+          "pgn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Filename for /results/"
+          }
+        }
+      },
+      "Job": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed"
+            ]
+          },
+          "log": {
+            "type": "string",
+            "description": "Live while running, final afterwards"
+          }
+        }
+      },
+      "Submission": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "building",
+              "accepted",
+              "rejected"
+            ]
+          },
+          "when": {
+            "type": "integer"
+          },
+          "bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The standing accepted build's size, when one exists"
+          },
+          "log": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The build log's tail: live while building, the reason when rejected"
+          }
+        }
+      },
+      "Game": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string",
+            "enum": [
+              "1-0",
+              "0-1",
+              "1/2-1/2",
+              "*"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "description": "Games in the file"
+          },
+          "frames": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Frame"
+            },
+            "description": "One per ply; frame 0 is the opening position"
+          },
+          "cycles": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Spent per ply; empty for old records"
+          },
+          "budget": {
+            "type": "integer",
+            "description": "Cycles allowed per move"
+          },
+          "white": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Who has the white pieces; null for records the database no longer names"
+          },
+          "black": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ended": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why it ended: checkmate, a draw's reason, or the forfeit's; null for unfinished games"
+          }
+        }
+      },
+      "Frame": {
+        "type": "object",
+        "properties": {
+          "fen": {
+            "type": "string"
+          },
+          "san": {
+            "type": "string",
+            "description": "Empty on frame 0"
+          },
+          "from": {
+            "type": "integer",
+            "description": "Square index, 0 = a1, 63 = h8; absent on frame 0"
+          },
+          "to": {
+            "type": "integer",
+            "description": "Absent on frame 0"
+          }
+        }
+      },
+      "EngineStats": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "owner": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The submitter: a GitHub login, a ~guest, or null for house engines"
+          },
+          "submitted": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "When the standing build was accepted; resubmission resets it"
+          },
+          "rating": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "elo": {
+                "type": "number"
+              },
+              "err": {
+                "type": "number"
+              },
+              "group": {
+                "type": "integer",
+                "description": "0 is the main group; others are not comparable with it"
+              }
+            },
+            "description": "Null while unrated"
+          },
+          "rank": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Within the main group"
+          },
+          "of": {
+            "type": "integer",
+            "description": "Rated engines in the main group"
+          },
+          "games": {
+            "type": "integer"
+          },
+          "wins": {
+            "type": "integer"
+          },
+          "draws": {
+            "type": "integer"
+          },
+          "losses": {
+            "type": "integer"
+          },
+          "avg_plies": {
+            "type": "number"
+          },
+          "head_to_head": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HeadToHead"
+            }
+          },
+          "recent": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecentMatch"
+            },
+            "description": "Newest first, at most 20"
+          }
+        }
+      },
+      "HeadToHead": {
+        "type": "object",
+        "properties": {
+          "opponent": {
+            "type": "string"
+          },
+          "games": {
+            "type": "integer"
+          },
+          "score": {
+            "type": "number",
+            "description": "This engine's share of the points, 0 to 1"
+          }
+        }
+      },
+      "RecentMatch": {
+        "type": "object",
+        "properties": {
+          "opponent": {
+            "type": "string"
+          },
+          "games": {
+            "type": "integer"
+          },
+          "score": {
+            "type": "number",
+            "description": "Percent, for this engine"
+          },
+          "when": {
+            "type": "integer"
+          },
+          "file": {
+            "type": "string",
+            "description": "Tag; append \".moves\" for /api/game"
+          }
+        }
+      },
+      "PlayReply": {
+        "type": "object",
+        "properties": {
+          "engine_move": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "UCI; absent when the game was already over"
+          },
+          "san": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cycles": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "What the move cost the engine"
+          },
+          "fen": {
+            "type": "string"
+          },
+          "result": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Null while the game is ongoing"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why the engine forfeited, when it did"
+          },
+          "check": {
+            "type": "boolean",
+            "description": "Whether the side to move stands in check"
+          }
+        }
+      }
+    }
+  }
+}

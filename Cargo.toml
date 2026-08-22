@@ -1,0 +1,12 @@
+[workspace]
+members = ["rules", "abi", "reference", "harness", "engines/random", "stats"]
+resolver = "2"
+# Entries are standalone crates on the published hfc-rules and hfc-abi;
+# they and the build/ artifacts stay outside the workspace.
+exclude = ["entries", "build"]
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"

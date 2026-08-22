@@ -1,0 +1,4 @@
+# Pinned so both entries are built by the same compiler. Changing this changes
+# codegen for both players equally, but invalidates any Elo measured before it.
+[toolchain]
+channel = "1.93.0"
