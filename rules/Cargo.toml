@@ -1,0 +1,8 @@
+[package]
+name = "hfc-rules"
+version = "1.0.0"
+edition = "2021"
+description = "The rules of chess as code, for High-Frequency Chess entries: board, movegen, termination, notation"
+license = "MIT"
+repository = "https://github.com/kevinheavey/high-frequency-chess-public"
+include = ["src/**", "Cargo.toml"]

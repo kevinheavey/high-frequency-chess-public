@@ -1,0 +1,11 @@
+[package]
+name = "harness"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+hfc-rules = { path = "../rules" }
+hfc-abi = { path = "../abi" }
+stats = { path = "../stats" }
+libloading = "0.8"
+libc = "0.2"

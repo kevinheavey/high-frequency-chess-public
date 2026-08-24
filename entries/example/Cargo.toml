@@ -1,0 +1,12 @@
+[package]
+name = "example-engine"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "example_engine"
+crate-type = ["cdylib"]
+
+[dependencies]
+hfc-rules = "1.0.0"
+hfc-abi = "1.0.0"

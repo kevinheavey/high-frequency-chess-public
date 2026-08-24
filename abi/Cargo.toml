@@ -1,0 +1,13 @@
+[package]
+name = "hfc-abi"
+version = "1.0.0"
+edition = "2021"
+description = "The engine ABI for High-Frequency Chess: the shared position structs and the cycle counter both sides read"
+license = "MIT"
+repository = "https://github.com/kevinheavey/high-frequency-chess-public"
+include = ["src/**", "Cargo.toml"]
+
+[dependencies]
+hfc-rules = { path = "../rules", version = "1.0.0" }
+libc = "=0.2.189"
+perf-event-open-sys = "=4.0.0"
